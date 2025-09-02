@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="results-hero card">
+  <div class="results-left">
+    <h2>Scan Results</h2>
+    <p class="muted">Target: <strong>{{ results.target }}</strong> • Duration: <strong>{{ results.duration }}s</strong>
+    </p>
+  </div>
+  <div class="results-actions">
+    <button id="downloadReport" class="btn-primary">Download PDF</button>
+    <a href="{{ url_for('index') }}" class="btn-ghost">New Scan</a>
+  </div>
+</div>
+
+<div class="grid results-grid">
+  <!-- SSL -->
+  <div class="panel card">
+    <h3>
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M12 2s8 4 8 10v6H4v-6c0-6 8-10 8-10z" />
+      </svg>
+      SSL / TLS
+    </h3>
+    <ul class="result-list">
+      <li><strong>Supports TLS:</strong> {{ results.ssl.supports_tls }}</li>
+      <li><strong>Expiry:</strong> {{ results.ssl.certificate_expiry }}</li>
+      <li><strong>Days to expiry:</strong> {{ results.ssl.days_to_expiry }}</li>
+      <li><strong>Protocols:</strong> {{ results.ssl.ssl_protocols }}</li>
+      <li><strong>Cipher Suites:</strong> {{ results.ssl.cipher_suites }}</li>
+    </ul>
+    {% if results.ssl.notes %}
+    <div class="notes">
+      <strong>Notes:</strong>
+      <ul>
+        {% for n in results.ssl.notes %}<li>{{ n }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Display SSL Recommendations -->
+    <div class="recommendations">
+      <strong>Recommendations to Secure:</strong>
+      <ul>
+        {% for rec in results.ssl.recommendations %}
+        <li>{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- SQL Injection -->
+  <div
+    class="panel card status-card {% if results.sql_injection.possible %}status-risk{% else %}status-safe{% endif %}">
+    <h3>
+      <svg class="icon" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M3 5v14c0 1.7 4 3 9 3" />
+      </svg>
+      SQL Injection (Heuristics)
+    </h3>
+    <p><strong>Possible:</strong> {{ 'Yes' if results.sql_injection.possible else 'No' }}</p>
+    {% if results.sql_injection.evidence %}
+    <details>
+      <summary>Evidence</summary>
+      <ul>
+        {% for e in results.sql_injection.evidence %}
+        <li>{{ e }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+
+    <!-- Display SQLi Recommendations -->
+    <div class="recommendations">
+      <strong>Recommendations to Secure:</strong>
+      <ul>
+        {% for rec in results.sql_injection.recommendations %}
+        <li>{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- XSS -->
+  <div class="panel card status-card {% if results.xss.possible %}status-risk{% else %}status-safe{% endif %}">
+    <h3>
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M12 2l3 7-3 3-3-3 3-7z" />
+      </svg>
+      Reflected XSS
+    </h3>
+    <p><strong>Possible:</strong> {{ 'Yes' if results.xss.possible else 'No' }}</p>
+    {% if results.xss.reflections %}
+    <details>
+      <summary>Reflections</summary>
+      <ul>
+        {% for e in results.xss.reflections %}
+        <li>{{ e }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+
+    <!-- Display XSS Recommendations -->
+    <div class="recommendations">
+      <strong>Recommendations to Secure:</strong>
+      <ul>
+        {% for rec in results.xss.recommendations %}
+        <li>{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- CSRF -->
+  <div
+    class="panel card status-card {% if results.csrf.post_forms_without_token > 0 %}status-risk{% else %}status-safe{% endif %}">
+    <h3>
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M3 6h18" />
+        <path d="M3 12h18" />
+        <path d="M3 18h18" />
+      </svg>
+      CSRF (Form Heuristics)
+    </h3>
+    <ul>
+      <li><strong>Forms checked:</strong> {{ results.csrf.forms_checked }}</li>
+      <li><strong>POST forms w/o token:</strong> {{ results.csrf.post_forms_without_token }}</li>
+    </ul>
+    {% if results.csrf.issues %}
+    <details>
+      <summary>Issues</summary>
+      <ul>
+        {% for i in results.csrf.issues %}
+        <li>{{ i }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+
+    <!-- Display CSRF Recommendations -->
+    <div class="recommendations">
+      <strong>Recommendations to Secure:</strong>
+      <ul>
+        {% for rec in results.csrf.recommendations %}
+        <li>{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('downloadReport');
+    btn.addEventListener('click', async () => {
+      const payload = { results: {{ results| tojson
+    }} };
+  const res = await fetch("{{ url_for('report') }}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.path) {
+    alert("Report generated on server path: " + data.path + "\n(For local dev, check your system temp folder.)");
+  } else {
+    alert("Could not generate report.");
+  }
+  });
+});
+</script>
+
+
+{% endblock %}
